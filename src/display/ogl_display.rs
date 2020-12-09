@@ -100,7 +100,7 @@ impl WindowManager
     fn new_window(&self, display_desc : &DisplayDesc) -> WindowData
     {
         let video_subsystem = self.sdl.video().unwrap();
-        let window = video_subsystem.window(&display_desc.window_title, 256, 256).opengl().resizable().build().unwrap();
+        let window = video_subsystem.window(&display_desc.window_title, display_desc.w, display_desc.h).opengl().resizable().build().unwrap();
         let gl_context = window.gl_create_context().unwrap();
         let _gl = gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
         WindowData { window_data : window, _gl_context : gl_context }

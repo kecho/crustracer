@@ -3,12 +3,12 @@ use crate::display::ImgDisplay;
 
 fn main()
 {
-    let display_desc = display::DisplayDesc {w: 300, h: 300, window_title: "crustracer".to_owned()};
+    let display_desc = display::DisplayDesc {w: 600, h: 400, window_title: "crustracer".to_owned()};
     let mut display = display::create_ogl_display(display_desc);
     let mut img = Vec::new();
-    for x in 0..300
+    for y in 0..400
     {
-        for y in 0..300
+        for x in 0..600
         {
             let is_white = match y & 0x1 
             {
