@@ -1,7 +1,7 @@
 extern crate gl;
 extern crate sdl2;
 use std::ffi::CString;
-use crate::display::{ImgDisplay, DisplayDesc };
+use crate::display::{ImgDisplay, DisplayDesc, DisplayContext, DisplayCallbacks };
 
 //--------------------------------------
 //-------------Ogl Display--------------
@@ -16,14 +16,38 @@ pub struct OglDisplay
 
 impl ImgDisplay for OglDisplay
 {
-    fn run<DrawT>(&mut self, mut draw_img_cb : DrawT) where
-        DrawT : FnMut(&mut Vec<u32>)
+    fn get_sdl2(&mut self) -> &sdl2::Sdl
+    {
+        &self.window_manager.sdl
+    }
+    fn get_sdl2_window(&self) -> &sdl2::video::Window
+    {
+        &self.window.window_data
+    }
+
+    fn get_event_pump(&self) -> &sdl2::EventPump
+    {
+        &self.window_manager.event_pump
+    }
+
+    fn run<DisplayCallbackT>(&mut self, display_cb : &mut DisplayCallbackT)
+        where DisplayCallbackT : DisplayCallbacks
     {
         let mut img = vec![0u32; (self.desc.w*self.desc.h) as usize];
         'main_loop: loop
         {
+            let window_sz = self.window.window_data.size();
+            if window_sz.0 != self.desc.w || window_sz.1 != self.desc.h
+            {
+                img = vec![0u32; (window_sz.0*window_sz.1) as usize];
+                self.ogl_data.texture = OglTexture::new(window_sz.0, window_sz.1);
+                self.desc.w = window_sz.0;
+                self.desc.h = window_sz.1;
+            }
+
             for e in self.window_manager.event_pump.poll_iter()
             {
+                display_cb.on_event(&e);
                 match e
                 {
                     sdl2::event::Event::Quit {..} => break 'main_loop,
@@ -31,8 +55,12 @@ impl ImgDisplay for OglDisplay
                 }
             }
 
-            draw_img_cb(&mut img);
+            let dc = DisplayContext{ 
+                width : self.desc.w, height : self.desc.h,
+                sdl2 : &self.window_manager.sdl, w : &self.window.window_data, event_pump : &self.window_manager.event_pump };
+            display_cb.on_cpu_render(&mut img, &dc);
             self.render(&img);
+            display_cb.on_gl_render(&dc);
             self.window.window_data.gl_swap_window();
         }
     }
@@ -60,6 +88,7 @@ impl OglDisplay
         unsafe 
         {
             self.ogl_data.texture.update(self.desc.w, self.desc.h, 0, 0, img);
+            gl::Viewport(0, 0, self.desc.w as i32, self.desc.h as i32);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ActiveTexture(gl::TEXTURE0);
